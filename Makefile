@@ -332,11 +332,15 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-MODFLAGS	= -DMODULE
+###ardatdat
+###MODFLAGS	= -DMODULE
+MODFLAGS  = -DMODULE -O3 -marm -mfpu=vfp -mtune=arm1176jzf-s
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	=
+###ardatdat
+###CFLAGS_KERNEL	=
+CFLAGS_KERNEL  = -O3 -marm -mfpu=vfp -mtune=arm1176jzf-s
 AFLAGS_KERNEL	=
 
 
