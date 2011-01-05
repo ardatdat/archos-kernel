@@ -322,6 +322,7 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
 			if (IS_ERR(acl))
 				return PTR_ERR(acl);
 		}
+		////ardatdat
 		if (!acl)
 			inode->i_mode &= ~current->fs->umask;
 	}
