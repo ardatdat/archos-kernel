@@ -132,8 +132,12 @@
 #define VDD1_THRESHOLD	VDD1_OPP3
 
 /* MPU speeds */
-#define S1100M  1100000000
+/* Non-standard MPU speeds */
+#define S1100M  1152000000
 #define S1200M  1200000000
+#define S1300M  1300000000
+
+/* Standard MPU speeds */
 #define S1000M  1000000000
 #define S800M   800000000
 #define S720M   720000000
