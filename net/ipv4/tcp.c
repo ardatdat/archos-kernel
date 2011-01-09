@@ -857,7 +857,8 @@ int tcp_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
 		goto do_error;
 
 	while (--iovlen >= 0) {
-		int seglen = iov->iov_len;
+		////int seglen = iov->iov_len;
+		size_t seglen = iov->iov_len;
 		unsigned char __user *from = iov->iov_base;
 
 		iov++;
