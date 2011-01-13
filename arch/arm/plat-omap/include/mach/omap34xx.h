@@ -133,7 +133,7 @@
 
 /* MPU speeds */
 /* Non-standard MPU speeds */
-#define S1100M  1152000000
+#define S1100M  1100000000
 #define S1200M  1200000000
 #define S1300M  1300000000
 
