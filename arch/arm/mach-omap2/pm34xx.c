@@ -63,6 +63,10 @@
 
 static int regset_save_on_suspend;
 
+#define OMAP3430_CORE_FCLK     (CONFIG_TIWLAN_MMC_CONTROLLER == 3 ? (1 << 30) :\
+                                CONFIG_TIWLAN_MMC_CONTROLLER == 2 ? (1 << 25) :\
+                                                                   (1 << 24))
+
 /* Function pointer need to be called from idle and suspend/resume path */
 static int (*core_off_notification)(bool);
 
@@ -417,6 +421,7 @@ void omap_sram_idle(void)
 	int mpu_prev_state, core_prev_state, per_prev_state;
 	int mpu_logic_state, mpu_mem_state, core_logic_state, core_mem_state;
 	u32 sdrc_pwr = 0;
+	u32 fclk_status = 0;
 
 	if (!_omap_sram_idle)
 		return;
@@ -512,6 +517,11 @@ void omap_sram_idle(void)
 
 	omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 	omap_uart_prepare_idle(1, core_next_state & core_logic_state);
+
+       fclk_status = cm_read_mod_reg(CORE_MOD, CM_FCLKEN1);
+       fclk_status &= OMAP3430_CORE_FCLK;
+       if (fclk_status)
+               omap2_clkdm_deny_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 
 	if (core_next_state < PWRDM_POWER_ON) {
 		if (core_next_state == PWRDM_POWER_OFF) {
