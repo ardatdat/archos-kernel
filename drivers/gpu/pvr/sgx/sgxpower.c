@@ -197,9 +197,8 @@ static IMG_VOID SGXPollForClockGating (PVRSRV_SGXDEV_INFO	*psDevInfo,
 	if (PollForValueKM((IMG_UINT32 *)psDevInfo->pvRegsBaseKM + (ui32Register >> 2),
 						0,
 						ui32RegisterValue,
-						MAX_HW_TIME_US,
 						MAX_HW_TIME_US/WAIT_TRY_COUNT,
-						IMG_FALSE) != PVRSRV_OK)
+						WAIT_TRY_COUNT) != PVRSRV_OK)
 	{
 		PVR_DPF((PVR_DBG_ERROR,"SGXPollForClockGating: %s failed.", pszComment));
 		PVR_DBG_BREAK;
@@ -252,7 +251,7 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 
 		sCommand.ui32Data[1] = ui32PowerCmd;
 
-		eError = SGXScheduleCCBCommand(psDevInfo, SGXMKIF_CMD_POWER, &sCommand, KERNEL_ID, 0, IMG_FALSE);
+		eError = SGXScheduleCCBCommand(psDevInfo, SGXMKIF_CMD_POWER, &sCommand, KERNEL_ID, 0);
 		if (eError != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"SGXPrePowerState: Failed to submit power down command"));
@@ -264,9 +263,8 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 		if (PollForValueKM(&psDevInfo->psSGXHostCtl->ui32PowerStatus,
 							ui32CompleteStatus,
 							ui32CompleteStatus,
-							MAX_HW_TIME_US,
 							MAX_HW_TIME_US/WAIT_TRY_COUNT,
-							IMG_FALSE) != PVRSRV_OK)
+							WAIT_TRY_COUNT) != PVRSRV_OK)
 		{
 			PVR_DPF((PVR_DBG_ERROR,"SGXPrePowerState: Wait for SGX ukernel power transition failed."));
 			PVR_DBG_BREAK;
@@ -373,7 +371,7 @@ PVRSRV_ERROR SGXPostPowerState (IMG_HANDLE				hDevHandle,
 			SGXMKIF_COMMAND		sCommand = {0};
 
 			sCommand.ui32Data[1] = PVRSRV_POWERCMD_RESUME;
-			eError = SGXScheduleCCBCommand(psDevInfo, SGXMKIF_CMD_POWER, &sCommand, ISR_ID, 0, IMG_FALSE);
+			eError = SGXScheduleCCBCommand(psDevInfo, SGXMKIF_CMD_POWER, &sCommand, ISR_ID, 0);
 			if (eError != PVRSRV_OK)
 			{
 				PVR_DPF((PVR_DBG_ERROR,"SGXPostPowerState failed to schedule CCB command: %u", eError));
