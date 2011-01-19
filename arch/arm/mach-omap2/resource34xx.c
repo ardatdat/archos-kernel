@@ -269,10 +269,32 @@ static int program_opp_freq(int res, int target_level, int current_level)
 			cm_write_mod_reg(cm_clksel1_mpu, MPU_MOD, CM_CLKSEL1);
 		}
 		curr_opp = &curr_vdd1_opp;
-		clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
+		///clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
 		/* XXX: frequently fails to transition to bypass and slows down whole system,
 		 * but seems to work now that bridge modules are loaded */
-		clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+		///clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+
+               /*
+                * VDD1 OPP5 has:
+                *      ARM = 1.2G
+                *      DSP = 65MHz
+                * Now, while scaling from VDD1 OPPx-->OPP5, we need to make
+                * sure that DSP freq is changed first and then the ARM.
+                * Else there can be a small window were ARM will be running
+                * at 1.2G with DSP greater than 65MHz. Which is not a stable
+                * combination as per h/w validation. So, we make sure to
+                * change the DSP freq first (if the target OPP is OPP5) and
+                * then the ARM.
+                * And for other OPP transition change the ARM freq and then
+                * the DSP.
+                */
+               if (target_level == VDD1_OPP5) {
+                       clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+                       clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
+               } else {
+                       clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
+                       clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+               }
 		
 #ifndef CONFIG_CPU_FREQ
 		/*Update loops_per_jiffy if processor speed is being changed*/
