@@ -27,6 +27,7 @@
 #ifndef __OMAPLFB_H__
 #define __OMAPLFB_H__
 
+
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,26))
 #include <mach/display.h>
 #else 
@@ -34,6 +35,13 @@
 #endif 
 
 #include <linux/major.h>
+
+#ifdef DEBUG
+#ifndef DEBUG_DISP_DRV
+#define DEBUG_DISP_DRV
+#endif
+#endif
+
 
 extern IMG_BOOL PVRGetDisplayClassJTable(PVRSRV_DC_DISP2SRV_KMJTABLE *psJTable);
 
@@ -143,13 +151,18 @@ typedef enum _OMAP_ERROR_
 #define	DEVNAME	DRVNAME
 #define	DRIVER_PREFIX DRVNAME
 
-#define FRAMEBUFFER_COUNT		num_registered_fb
+/*#define FRAMEBUFFER_COUNT		num_registered_fb*/
+#define FRAMEBUFFER_COUNT       1
 
-#ifdef	DEBUG
+#ifdef	DEBUG_DISP_DRV
 #define	DEBUG_PRINTK(format, ...) printk("DEBUG " DRIVER_PREFIX \
+	" (%s %i): " format "\n", __func__, __LINE__, ## __VA_ARGS__)
+#define INFO_PRINTK(format, ...) printk("INFO " DRIVER_PREFIX \
 	" (%s %i): " format "\n", __func__, __LINE__, ## __VA_ARGS__)
 #else
 #define	DEBUG_PRINTK(format,...)
+#define INFO_PRINTK(format, ...) printk("pvr: " \
+	format "\n", ## __VA_ARGS__)
 #endif
 
 #define	WARNING_PRINTK(format, ...) printk("WARNING " DRIVER_PREFIX \
