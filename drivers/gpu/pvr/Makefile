@@ -31,6 +31,7 @@ ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 
 ccflags-$(CONFIG_SGX_DEBUG_DISPLAY_DRIVER) += -DDEBUG_DISP_DRV
 
+
 ccflags-$(CONFIG_SGX540) +=  -Idrivers/gpu/pvr/omap4  -Idrivers/gpu/pvr/sgx \
 	-DNO_OMAP_TIMER \
 	-DSGX_CLK_CORE_DIV5 \
@@ -62,6 +63,7 @@ ccflags-$(CONFIG_SGX_530_BUILD_DEBUG) += \
 	-DPVRSRV_USSE_EDM_STATUS_DEBUG \
 	-DPVRSRV_DUMP_MK_TRACE \
 	-DDEBUG_LOG_PATH_TRUNCATE="\"eurasia_km\""
+
 
 ccflags-$(CONFIG_SGX_540_BUILD_RELEASE) += \
 	-DPVR_BUILD_TYPE="\"release\"" \
