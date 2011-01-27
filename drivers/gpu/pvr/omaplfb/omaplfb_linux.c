@@ -431,7 +431,8 @@ static int __init OMAPLFB_Init(void)
 #if defined(SGX_EARLYSUSPEND)
 	omaplfb_early_suspend.suspend = OMAPLFBDriverSuspend_Entry;
         omaplfb_early_suspend.resume = OMAPLFBDriverResume_Entry;
-        omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;	
+        //omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;	
+	omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
         register_early_suspend(&omaplfb_early_suspend);
 	DEBUG_PRINTK("Registered early suspend support");
 #endif
