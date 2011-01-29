@@ -362,12 +362,16 @@ static void reparent_to_kthreadd(void)
 void __set_special_pids(struct pid *pid)
 {
 	struct task_struct *curr = current->group_leader;
+	pid_t nr = pid_nr(pid);
 
-	if (task_session(curr) != pid)
+	if (task_session(curr) != pid) {
 		change_pid(curr, PIDTYPE_SID, pid);
-
-	if (task_pgrp(curr) != pid)
+		set_task_session(curr, nr);
+	}
+	if (task_pgrp(curr) != pid) {
 		change_pid(curr, PIDTYPE_PGID, pid);
+		set_task_pgrp(curr, nr);
+	}
 }
 
 static void set_special_pids(struct pid *pid)
@@ -425,6 +429,7 @@ EXPORT_SYMBOL(disallow_signal);
 void daemonize(const char *name, ...)
 {
 	va_list args;
+	struct fs_struct *fs;
 	sigset_t blocked;
 
 	va_start(args, name);
@@ -457,7 +462,11 @@ void daemonize(const char *name, ...)
 
 	/* Become as one with the init task */
 
-	daemonize_fs_struct();
+	exit_fs(current);	/* current->fs->count--; */
+	fs = init_task.fs;
+	current->fs = fs;
+	atomic_inc(&fs->count);
+
 	exit_files(current);
 	current->files = init_task.files;
 	atomic_inc(&current->files->count);
@@ -555,6 +564,30 @@ void exit_files(struct task_struct *tsk)
 		put_files_struct(files);
 	}
 }
+
+void put_fs_struct(struct fs_struct *fs)
+{
+	/* No need to hold fs->lock if we are killing it */
+	if (atomic_dec_and_test(&fs->count)) {
+		path_put(&fs->root);
+		path_put(&fs->pwd);
+		kmem_cache_free(fs_cachep, fs);
+	}
+}
+
+void exit_fs(struct task_struct *tsk)
+{
+	struct fs_struct * fs = tsk->fs;
+
+	if (fs) {
+		task_lock(tsk);
+		tsk->fs = NULL;
+		task_unlock(tsk);
+		put_fs_struct(fs);
+	}
+}
+
+EXPORT_SYMBOL_GPL(exit_fs);
 
 #ifdef CONFIG_MM_OWNER
 /*
@@ -699,48 +732,20 @@ static void exit_mm(struct task_struct * tsk)
 }
 
 /*
- * Called with irqs disabled, returns true if childs should reap themselves.
+ * Return nonzero if @parent's children should reap themselves.
+ *
+ * Called with write_lock_irq(&tasklist_lock) held.
  */
-static int ignoring_children(struct sighand_struct *sigh)
+static int ignoring_children(struct task_struct *parent)
 {
 	int ret;
-	spin_lock(&sigh->siglock);
-	ret = (sigh->action[SIGCHLD-1].sa.sa_handler == SIG_IGN) ||
-	      (sigh->action[SIGCHLD-1].sa.sa_flags & SA_NOCLDWAIT);
-	spin_unlock(&sigh->siglock);
+	struct sighand_struct *psig = parent->sighand;
+	unsigned long flags;
+	spin_lock_irqsave(&psig->siglock, flags);
+	ret = (psig->action[SIGCHLD-1].sa.sa_handler == SIG_IGN ||
+	       (psig->action[SIGCHLD-1].sa.sa_flags & SA_NOCLDWAIT));
+	spin_unlock_irqrestore(&psig->siglock, flags);
 	return ret;
-}
-
-/* Returns nonzero if the tracee should be released. */
-int __ptrace_detach(struct task_struct *tracer, struct task_struct *p)
-{
-	__ptrace_unlink(p);
-
-	if (p->exit_state != EXIT_ZOMBIE)
-		return 0;
-	/*
-	 * If it's a zombie, our attachedness prevented normal
-	 * parent notification or self-reaping.  Do notification
-	 * now if it would have happened earlier.  If it should
-	 * reap itself we return true.
-	 *
-	 * If it's our own child, there is no notification to do.
-	 * But if our normal children self-reap, then this child
-	 * was prevented by ptrace and we must reap it now.
-	 */
-	if (!task_detached(p) && thread_group_empty(p)) {
-		if (!same_thread_group(p->real_parent, tracer))
-			do_notify_parent(p, p->exit_signal);
-		else if (ignoring_children(tracer->sighand))
-			p->exit_signal = -1;
-	}
-
-	if (!task_detached(p))
-		return 0;
-
-	/* Mark it as in the process of being reaped. */
-	p->exit_state = EXIT_DEAD;
-	return 1;
 }
 
 /*
@@ -752,10 +757,43 @@ int __ptrace_detach(struct task_struct *tracer, struct task_struct *p)
 static void ptrace_exit(struct task_struct *parent, struct list_head *dead)
 {
 	struct task_struct *p, *n;
+	int ign = -1;
 
 	list_for_each_entry_safe(p, n, &parent->ptraced, ptrace_entry) {
-		if (__ptrace_detach(parent, p))
+		__ptrace_unlink(p);
+
+		if (p->exit_state != EXIT_ZOMBIE)
+			continue;
+
+		/*
+		 * If it's a zombie, our attachedness prevented normal
+		 * parent notification or self-reaping.  Do notification
+		 * now if it would have happened earlier.  If it should
+		 * reap itself, add it to the @dead list.  We can't call
+		 * release_task() here because we already hold tasklist_lock.
+		 *
+		 * If it's our own child, there is no notification to do.
+		 * But if our normal children self-reap, then this child
+		 * was prevented by ptrace and we must reap it now.
+		 */
+		if (!task_detached(p) && thread_group_empty(p)) {
+			if (!same_thread_group(p->real_parent, parent))
+				do_notify_parent(p, p->exit_signal);
+			else {
+				if (ign < 0)
+					ign = ignoring_children(parent);
+				if (ign)
+					p->exit_signal = -1;
+			}
+		}
+
+		if (task_detached(p)) {
+			/*
+			 * Mark it as in the process of being reaped.
+			 */
+			p->exit_state = EXIT_DEAD;
 			list_add(&p->ptrace_entry, dead);
+		}
 	}
 }
 
@@ -777,44 +815,33 @@ static void ptrace_exit_finish(struct task_struct *parent,
 	}
 }
 
-/* Returns nonzero if the child should be released. */
-static int reparent_thread(struct task_struct *p, struct task_struct *father)
+static void reparent_thread(struct task_struct *p, struct task_struct *father)
 {
-	int dead;
-
 	if (p->pdeath_signal)
 		/* We already hold the tasklist_lock here.  */
 		group_send_sig_info(p->pdeath_signal, SEND_SIG_NOINFO, p);
 
 	list_move_tail(&p->sibling, &p->real_parent->children);
 
-	if (task_detached(p))
-		return 0;
 	/* If this is a threaded reparent there is no need to
 	 * notify anyone anything has happened.
 	 */
 	if (same_thread_group(p->real_parent, father))
-		return 0;
+		return;
 
 	/* We don't want people slaying init.  */
-	p->exit_signal = SIGCHLD;
+	if (!task_detached(p))
+		p->exit_signal = SIGCHLD;
 
 	/* If we'd notified the old parent about this child's death,
 	 * also notify the new parent.
 	 */
-	dead = 0;
-	if (!p->ptrace &&
-	    p->exit_state == EXIT_ZOMBIE && thread_group_empty(p)) {
+	if (!ptrace_reparented(p) &&
+	    p->exit_state == EXIT_ZOMBIE &&
+	    !task_detached(p) && thread_group_empty(p))
 		do_notify_parent(p, p->exit_signal);
-		if (task_detached(p)) {
-			p->exit_state = EXIT_DEAD;
-			dead = 1;
-		}
-	}
 
 	kill_orphaned_pgrp(p, father);
-
-	return dead;
 }
 
 /*
@@ -874,8 +901,7 @@ static void forget_original_parent(struct task_struct *father)
 			BUG_ON(p->ptrace);
 			p->parent = p->real_parent;
 		}
-		if (reparent_thread(p, father))
-			list_add(&p->ptrace_entry, &ptrace_dead);;
+		reparent_thread(p, father);
 	}
 
 	write_unlock_irq(&tasklist_lock);
@@ -924,7 +950,8 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 	 */
 	if (tsk->exit_signal != SIGCHLD && !task_detached(tsk) &&
 	    (tsk->parent_exec_id != tsk->real_parent->self_exec_id ||
-	     tsk->self_exec_id != tsk->parent_exec_id))
+	     tsk->self_exec_id != tsk->parent_exec_id) &&
+	    !capable(CAP_KILL))
 		tsk->exit_signal = SIGCHLD;
 
 	signal = tracehook_notify_death(tsk, &cookie, group_dead);
@@ -1393,18 +1420,6 @@ static int wait_task_zombie(struct task_struct *p, int options,
 	return retval;
 }
 
-static int *task_stopped_code(struct task_struct *p, bool ptrace)
-{
-	if (ptrace) {
-		if (task_is_stopped_or_traced(p))
-			return &p->exit_code;
-	} else {
-		if (p->signal->flags & SIGNAL_STOP_STOPPED)
-			return &p->signal->group_exit_code;
-	}
-	return NULL;
-}
-
 /*
  * Handle sys_wait4 work for one task in state TASK_STOPPED.  We hold
  * read_lock(&tasklist_lock) on entry.  If we return zero, we still hold
@@ -1415,7 +1430,7 @@ static int wait_task_stopped(int ptrace, struct task_struct *p,
 			     int options, struct siginfo __user *infop,
 			     int __user *stat_addr, struct rusage __user *ru)
 {
-	int retval, exit_code, *p_code, why;
+	int retval, exit_code, why;
 	uid_t uid = 0; /* unneeded, required by compiler */
 	pid_t pid;
 
@@ -1425,16 +1440,22 @@ static int wait_task_stopped(int ptrace, struct task_struct *p,
 	exit_code = 0;
 	spin_lock_irq(&p->sighand->siglock);
 
-	p_code = task_stopped_code(p, ptrace);
-	if (unlikely(!p_code))
+	if (unlikely(!task_is_stopped_or_traced(p)))
 		goto unlock_sig;
 
-	exit_code = *p_code;
+	if (!ptrace && p->signal->group_stop_count > 0)
+		/*
+		 * A group stop is in progress and this is the group leader.
+		 * We won't report until all threads have stopped.
+		 */
+		goto unlock_sig;
+
+	exit_code = p->exit_code;
 	if (!exit_code)
 		goto unlock_sig;
 
 	if (!unlikely(options & WNOWAIT))
-		*p_code = 0;
+		p->exit_code = 0;
 
 	/* don't need the RCU readlock here as we're holding a spinlock */
 	uid = __task_cred(p)->uid;
@@ -1590,7 +1611,7 @@ static int wait_consider_task(struct task_struct *parent, int ptrace,
 	 */
 	*notask_error = 0;
 
-	if (task_stopped_code(p, ptrace))
+	if (task_is_stopped_or_traced(p))
 		return wait_task_stopped(ptrace, p, options,
 					 infop, stat_addr, ru);
 

@@ -220,17 +220,13 @@ void omap_pm_dsp_set_min_opp(struct device *dev, unsigned long f)
 		 * OPP to 1G only. 1.3G will be allowed when DSP load dies
 		 * down to 65MHz.
 		 */
-		
-		//if ((f > S65M) && !vdd1_max_opp) {
-		//	vdd1_max_opp = 1;
-		//	omap_pm_vdd1_set_max_opp(dev, VDD1_OPP4);
-		//} else if ((f < S260M) && vdd1_max_opp) {
-		//	omap_pm_vdd1_set_max_opp(dev, 0);
-		//	vdd1_max_opp = 0;
-		//}
-
-		omap_pm_vdd1_set_max_opp(dev, 0);
-		vdd1_max_opp = 0;
+		if ((f > S65M) && !vdd1_max_opp) {
+			vdd1_max_opp = 1;
+			omap_pm_vdd1_set_max_opp(dev, VDD1_OPP4);
+		} else if ((f < S260M) && vdd1_max_opp) {
+			omap_pm_vdd1_set_max_opp(dev, 0);
+			vdd1_max_opp = 0;
+		}
 
 		/*
 		 * DSP table has 65MHz as OPP5, give OPP1-260MHz when DSP request
@@ -417,23 +413,20 @@ void omap_pm_if_exit(void)
 u8 omap_pm_get_max_vdd1_opp()
 {
 	if (cpu_is_omap3630()) {
-		///switch (omap_rev_id()) {
-		///case OMAP_3630:
-		///default:
-			///if (sr_read_efuse_nvalues(VDD1_OPP5) != 0)
-			///	return VDD1_OPP5;
-			///else
-		///		return VDD1_OPP4;
-		///case OMAP_3630_800:
-		///	return VDD1_OPP4;
-		///	return VDD1_OPP3;
-		///case OMAP_3630_1000:
-		///	return VDD1_OPP5;
-		///	return VDD1_OPP4;
-		///case OMAP_3630_1200:
-		///	return VDD1_OPP5;
-		////}
-		return VDD1_OPP5;
+		switch (omap_rev_id()) {
+		case OMAP_3630:
+		default:
+			if (sr_read_efuse_nvalues(VDD1_OPP5) != 0)
+				return VDD1_OPP5;
+			else
+				return VDD1_OPP4;
+		case OMAP_3630_800:
+			return VDD1_OPP3;
+		case OMAP_3630_1000:
+			return VDD1_OPP4;
+		case OMAP_3630_1200:
+			return VDD1_OPP5;
+		}
 	} else {
 		if (omap_rev() < OMAP3430_REV_ES3_1)
 			return VDD1_OPP5;
@@ -448,7 +441,6 @@ u8 omap_pm_get_max_vdd1_opp()
 				return VDD1_OPP5;
 			}
 		}
-		////return VDD1_OPP5;
 	}
 }
 EXPORT_SYMBOL(omap_pm_get_max_vdd1_opp);

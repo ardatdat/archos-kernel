@@ -15,7 +15,7 @@ ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 	-DSUPPORT_SGX_HWPERF \
 	-DSUPPORT_MEMINFO_IDS \
 	-DDISPLAY_CONTROLLER=omaplfb \
-	-DSYS_SGX_ACTIVE_POWER_LATENCY_MS=100 \
+	-DSYS_SGX_ACTIVE_POWER_LATENCY_MS=1 \
 	-DPVR_BUILD_DATE="" \
 	-DSUPPORT_SGX \
 	-DCLIENT_DRIVER_DEFAULT_WAIT_RETRIES=50 \
@@ -28,9 +28,6 @@ ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 	-DSUPPORT_SGX_NEW_STATUS_VALS \
         -DSYS_OMAP3430_PIN_MEMORY_BUS_CLOCK \
 	-DPVRSRV_MODNAME="\"pvrsrvkm"\"
-
-ccflags-$(CONFIG_SGX_DEBUG_DISPLAY_DRIVER) += -DDEBUG_DISP_DRV
-
 
 ccflags-$(CONFIG_SGX540) +=  -Idrivers/gpu/pvr/omap4  -Idrivers/gpu/pvr/sgx \
 	-DNO_OMAP_TIMER \
@@ -63,7 +60,6 @@ ccflags-$(CONFIG_SGX_530_BUILD_DEBUG) += \
 	-DPVRSRV_USSE_EDM_STATUS_DEBUG \
 	-DPVRSRV_DUMP_MK_TRACE \
 	-DDEBUG_LOG_PATH_TRUNCATE="\"eurasia_km\""
-
 
 ccflags-$(CONFIG_SGX_540_BUILD_RELEASE) += \
 	-DPVR_BUILD_TYPE="\"release\"" \

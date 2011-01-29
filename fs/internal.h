@@ -43,8 +43,7 @@ extern void __init chrdev_init(void);
 /*
  * exec.c
  */
-////extern void check_unsafe_exec(struct linux_binprm *, struct files_struct *);
-extern int check_unsafe_exec(struct linux_binprm *);
+extern void check_unsafe_exec(struct linux_binprm *, struct files_struct *);
 
 /*
  * namespace.c
@@ -61,8 +60,3 @@ extern void umount_tree(struct vfsmount *, int, struct list_head *);
 extern struct vfsmount *copy_tree(struct vfsmount *, struct dentry *, int);
 
 extern void __init mnt_init(void);
-
-/*
- * fs_struct.c
- */
-extern void chroot_fs_refs(struct path *, struct path *);

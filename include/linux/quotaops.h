@@ -386,60 +386,6 @@ static inline void vfs_dq_free_block(struct inode *inode, qsize_t nr)
 	vfs_dq_free_space(inode, nr << inode->i_sb->s_blocksize_bits);
 }
 
-/////ardatdat
-
-static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
-{
-   if (sb_any_quota_active(inode->i_sb)) {
-      /* Used space is updated in alloc_space() */
-      if (inode->i_sb->dq_op->reserve_space(inode, nr, 0) == NO_QUOTA)
-         return 1;
-   }
-   return 0;
-}
-
- 
-/*
- * Convert in-memory reserved quotas to real consumed quotas
- */
-static inline int vfs_dq_claim_space(struct inode *inode, qsize_t nr)
-{
-   if (sb_any_quota_active(inode->i_sb)) {
-      if (inode->i_sb->dq_op->claim_space(inode, nr) == NO_QUOTA)
-         return 1;
-   } else
-      inode_add_bytes(inode, nr);
-
-   mark_inode_dirty(inode);
-   return 0;
-}
-
-/*
- * Release reserved (in-memory) quotas
- */
-static inline
-void vfs_dq_release_reservation_space(struct inode *inode, qsize_t nr)
-{
-   if (sb_any_quota_active(inode->i_sb))
-      inode->i_sb->dq_op->release_rsv(inode, nr);
-}
-
-static inline int vfs_dq_reserve_block(struct inode *inode, qsize_t nr)
-{
-   return vfs_dq_reserve_space(inode, nr << inode->i_blkbits);
-}
-
-static inline int vfs_dq_claim_block(struct inode *inode, qsize_t nr)
-{
-   return vfs_dq_claim_space(inode, nr << inode->i_blkbits);
-}
-
-static inline void vfs_dq_release_reservation_block(struct inode *inode, qsize_t nr)
-{
-   vfs_dq_release_reservation_space(inode, nr << inode->i_blkbits);
-}
-
-
 /*
  * Define uppercase equivalents for compatibility with old function names
  * Can go away when we think all users have been converted (15/04/2008)

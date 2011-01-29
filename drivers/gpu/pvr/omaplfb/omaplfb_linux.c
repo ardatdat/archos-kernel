@@ -223,21 +223,16 @@ void OMAPLFBFlip(OMAPLFB_SWAPCHAIN *psSwapChain, unsigned long aPhyAddr)
 		overlay_info.paddr = framebuffer->fix.smem_start + fb_offset + overlay_offset;
 		overlay_info.vaddr = framebuffer->screen_base + fb_offset;
 		overlay->set_overlay_info(overlay, &overlay_info);
+		overlay->manager->apply(overlay->manager);
 
-		if (overlay->manager)
+		if(overlay->manager->device->update)
 		{
-			if (overlay->manager->device)
-			{
-				overlay->manager->apply(overlay->manager);
-				if(overlay->manager->device->update)
-				{
-					overlay->manager->device->update(
-						overlay->manager->device, 0, 0,
-						overlay_info.width,
-						overlay_info.height);
-				}
-			}
+			overlay->manager->device->update(
+				overlay->manager->device, 0, 0,
+				overlay_info.width,
+				overlay_info.height);
 		}
+
 	}
 
 	omapfb_unlock(fbdev);
@@ -431,8 +426,7 @@ static int __init OMAPLFB_Init(void)
 #if defined(SGX_EARLYSUSPEND)
 	omaplfb_early_suspend.suspend = OMAPLFBDriverSuspend_Entry;
         omaplfb_early_suspend.resume = OMAPLFBDriverResume_Entry;
-        //omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;	
-	omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+        omaplfb_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;	
         register_early_suspend(&omaplfb_early_suspend);
 	DEBUG_PRINTK("Registered early suspend support");
 #endif
@@ -451,7 +445,7 @@ fb_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	int w;
 	int h; 
     	} param;
-
+	
 	switch (cmd) {
 	case OMAPLFB_UPDATE:
 		if (!copy_from_user(&param, (void __user *)arg, sizeof(param)))
@@ -510,3 +504,4 @@ static const struct file_operations omaplfb_fops = {
 
 late_initcall(OMAPLFB_Init);
 module_exit(OMAPLFB_Cleanup);
+
