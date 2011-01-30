@@ -223,16 +223,21 @@ void OMAPLFBFlip(OMAPLFB_SWAPCHAIN *psSwapChain, unsigned long aPhyAddr)
 		overlay_info.paddr = framebuffer->fix.smem_start + fb_offset + overlay_offset;
 		overlay_info.vaddr = framebuffer->screen_base + fb_offset;
 		overlay->set_overlay_info(overlay, &overlay_info);
-		overlay->manager->apply(overlay->manager);
 
-		if(overlay->manager->device->update)
+		if (overlay->manager)
 		{
-			overlay->manager->device->update(
-				overlay->manager->device, 0, 0,
-				overlay_info.width,
-				overlay_info.height);
+			if (overlay->manager->device)
+			{
+				overlay->manager->apply(overlay->manager);
+				if(overlay->manager->device->update)
+				{
+					overlay->manager->device->update(
+						overlay->manager->device, 0, 0,
+						overlay_info.width,
+						overlay_info.height);
+				}
+			}
 		}
-
 	}
 
 	omapfb_unlock(fbdev);
@@ -445,7 +450,7 @@ fb_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 	int w;
 	int h; 
     	} param;
-	
+
 	switch (cmd) {
 	case OMAPLFB_UPDATE:
 		if (!copy_from_user(&param, (void __user *)arg, sizeof(param)))
@@ -504,4 +509,3 @@ static const struct file_operations omaplfb_fops = {
 
 late_initcall(OMAPLFB_Init);
 module_exit(OMAPLFB_Cleanup);
-
