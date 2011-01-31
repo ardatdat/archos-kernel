@@ -225,7 +225,9 @@ void omap_pm_dsp_set_min_opp(struct device *dev, unsigned long f)
 		 * 65MHz-OPP1
 		 */
 		if (f == S65M)
-			f = S260M;
+			f = S520M;
+		if (f == S130M)
+			f = S520M;
 	}
 
 	opp_id = get_opp_id(dsp_opps + MAX_VDD1_OPP, f);
