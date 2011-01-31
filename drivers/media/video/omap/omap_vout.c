@@ -2311,6 +2311,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 	omap_vout_vrfb_buffer_setup(vout, &count, 0);
 
 #ifdef CONFIG_PM
+	omap_pm_vdd1_set_max_opp(vout->dev, VDD1_OPP4);
 	if (pdata->set_min_bus_tput) {
 		if (cpu_is_omap3630()) {
 			pdata->set_min_bus_tput(vout->dev , OCP_INITIATOR_AGENT,
@@ -2383,6 +2384,7 @@ static int do_streamoff(struct file *file, void *fh, enum v4l2_buf_type i, int k
 					  OMAP_VOUT_IRQ_MASK);
 
 #ifdef CONFIG_PM
+		omap_pm_vdd1_set_max_opp(vout->dev, 0);
 		if (pdata->set_min_bus_tput)
 			pdata->set_min_bus_tput(vout->dev, OCP_INITIATOR_AGENT,
 								0);

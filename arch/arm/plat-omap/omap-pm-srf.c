@@ -409,20 +409,21 @@ u8 omap_pm_get_max_vdd1_opp()
 	if (cpu_is_omap3630()) {
 		return VDD1_OPP5;
 	} else {
-		if (omap_rev() < OMAP3430_REV_ES3_1)
-			return VDD1_OPP5;
-		else {
-			switch (omap_rev_id()) {
-			case OMAP_3420:
-			case OMAP_3430:
-				return VDD1_OPP5;
-			case OMAP_3440:
-				return VDD1_OPP6;
-			default:
-				return VDD1_OPP5;
-			}
-		}
+		return VDD1_OPP5;
 	}
+//		if (omap_rev() < OMAP3430_REV_ES3_1)
+//			return VDD1_OPP5;
+//		else {
+//			switch (omap_rev_id()) {
+//			case OMAP_3420:
+//			case OMAP_3430:
+//				return VDD1_OPP5;
+//			case OMAP_3440:
+//				return VDD1_OPP6;
+//			default:
+//				return VDD1_OPP5;
+//			}
+//		}
 }
 EXPORT_SYMBOL(omap_pm_get_max_vdd1_opp);
 
