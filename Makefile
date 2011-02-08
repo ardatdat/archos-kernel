@@ -333,11 +333,11 @@ CHECK		= sparse
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 
-MODFLAGS	= -DMODULE -O2 -Os -marm -mfpu=vfp -mtune=cortex-a8 -mfloat-abi=softfp -ffast-math -funroll-loops -fomit-frame-pointer -ftree-vectorize
+MODFLAGS	= -DMODULE -O2 -Os -mfpu=vfp
 CFLAGS_MODULE   = $(MODFLAGS)
 AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -O2 -Os -marm -mfpu=vfp -mtune=cortex-a8 -mfloat-abi=softfp -ffast-math -funroll-loops -fomit-frame-pointer -ftree-vectorize
+CFLAGS_KERNEL	= -O2 -Os -mfpu=vfp
 AFLAGS_KERNEL	= 
 
 
